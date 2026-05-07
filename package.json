@@ -1,0 +1,39 @@
+{
+  "name": "fallenshinobi-voice",
+  "version": "1.0.0",
+  "description": "FallenShinobi Voice - Proximity Voice Chat",
+  "main": "electron.js",
+  "scripts": {
+    "start": "node server.js",
+    "electron": "electron .",
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac",
+    "server": "node server.js"
+  },
+  "build": {
+    "appId": "com.fallenshinobi.voice",
+    "productName": "FallenShinobi Voice",
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "build/icon.icns"
+    },
+    "files": [
+      "electron.js",
+      "server.js",
+      "client/**/*",
+      "node_modules/**/*"
+    ]
+  },
+  "dependencies": {
+    "express": "^4.18.0",
+    "socket.io": "^4.7.0"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.0.0"
+  }
+}

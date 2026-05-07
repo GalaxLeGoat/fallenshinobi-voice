@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>FallenShinobi Voice</title>
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden;background:#0a0a0f;font-family:serif;color:#e8d9b0}
+#app{width:100%;height:100vh;display:flex;flex-direction:column}
+
+/* LOGIN */
+#screen-login{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:14px;padding:20px;overflow-y:auto}
+.jp-title{font-size:26px;letter-spacing:6px;color:#c8a96e;text-align:center}
+.jp-sub{font-size:10px;letter-spacing:8px;color:#6a5a3a;text-align:center}
+.jp-line{width:180px;height:1px;background:linear-gradient(90deg,transparent,#c8a96e,transparent)}
+.section-title{font-size:11px;letter-spacing:3px;color:#8a7a5a;text-align:center}
+#name-input{background:rgba(200,169,110,0.08);border:1px solid rgba(200,169,110,0.3);border-radius:8px;padding:10px 18px;color:#e8d9b0;font-size:14px;font-family:inherit;text-align:center;width:260px;outline:none;letter-spacing:2px}
+#name-input:focus{border-color:#c8a96e}
+#name-input::placeholder{color:rgba(232,217,176,0.25);font-size:12px}
+.villages-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%;max-width:360px}
+.village-btn{background:rgba(200,169,110,0.07);border:1px solid rgba(200,169,110,0.2);border-radius:8px;padding:10px 6px;color:#c8a96e;font-size:10px;font-family:inherit;letter-spacing:1px;cursor:pointer;text-align:center;transition:all .2s;line-height:1.5}
+.village-btn:hover,.village-btn.selected{background:rgba(200,169,110,0.22);border-color:#c8a96e}
+.village-btn .vi{font-size:20px;display:block;margin-bottom:4px}
+#btn-enter{background:rgba(200,169,110,0.12);border:1px solid rgba(200,169,110,0.4);border-radius:8px;padding:12px 36px;color:#c8a96e;font-size:12px;font-family:inherit;letter-spacing:4px;cursor:pointer;transition:all .2s;width:260px}
+#btn-enter:hover{background:rgba(200,169,110,0.25)}
+#err{font-size:10px;color:#e87070;letter-spacing:2px;min-height:14px;text-align:center}
+
+/* MAP */
+#screen-map{display:none;flex-direction:column;flex:1;overflow:hidden}
+#topbar{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:rgba(0,0,0,0.85);border-bottom:1px solid rgba(200,169,110,0.2);flex-shrink:0}
+.info .pname{font-size:13px;letter-spacing:3px;color:#c8a96e}
+.info .pvillage{font-size:9px;letter-spacing:2px;color:#6a5a3a;margin-top:2px}
+#toggle-wrap{display:flex;align-items:center;gap:8px}
+#toggle-lbl{font-size:9px;letter-spacing:2px;color:#8a7a5a}
+#toggle{width:42px;height:23px;background:#1a1a2a;border:1px solid rgba(200,169,110,0.3);border-radius:12px;cursor:pointer;position:relative;transition:all .3s}
+#toggle.on{background:rgba(200,169,110,0.2);border-color:#c8a96e}
+#tdot{position:absolute;top:3px;left:3px;width:15px;height:15px;background:#3a2a0a;border-radius:50%;transition:all .3s}
+#toggle.on #tdot{left:22px;background:#c8a96e}
+#map-wrap{position:relative;flex:1;overflow:hidden}
+#map-img{width:100%;height:100%;object-fit:cover;filter:brightness(0.6) saturate(0.7)}
+#map-canvas{position:absolute;inset:0;width:100%;height:100%}
+
+/* JOYSTICK */
+#joystick-wrap{position:absolute;bottom:60px;left:16px;width:96px;height:96px;display:none;z-index:10}
+#joystick-base{width:96px;height:96px;background:rgba(200,169,110,0.08);border:1px solid rgba(200,169,110,0.25);border-radius:50%;position:absolute}
+#joystick-knob{width:38px;height:38px;background:rgba(200,169,110,0.35);border:1px solid #c8a96e;border-radius:50%;position:absolute;top:29px;left:29px}
+
+/* PC HINT */
+#keys-hint{position:absolute;bottom:60px;left:50%;transform:translateX(-50%);display:none;flex-direction:column;align-items:center;gap:4px;opacity:0.35;pointer-events:none}
+#keys-hint p{font-size:8px;letter-spacing:2px;color:#8a7a5a;margin-top:4px}
+.kr{display:flex;gap:4px}
+.k{width:24px;height:24px;border:1px solid rgba(200,169,110,0.4);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#c8a96e;background:rgba(200,169,110,0.06)}
+
+/* VOICE PANEL */
+#voice-panel{position:absolute;bottom:50px;right:10px;background:rgba(8,8,12,0.96);border:1px solid rgba(200,169,110,0.45);border-radius:8px;padding:8px 12px;display:none;min-width:130px;max-width:150px;z-index:20;text-align:center}
+#voice-panel.show{display:block}
+#vc-pulse{width:8px;height:8px;background:#c8a96e;border-radius:50%;display:inline-block;margin-right:6px;animation:pulse 1.2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+#vc-title{font-size:9px;letter-spacing:3px;color:#c8a96e;margin-bottom:8px}
+#vc-names{font-size:11px;color:#e8d9b0;margin-bottom:12px;line-height:1.8;white-space:pre-line}
+#vc-mic{width:100%;padding:7px;background:rgba(200,169,110,0.12);border:1px solid rgba(200,169,110,0.3);border-radius:6px;color:#c8a96e;font-size:9px;letter-spacing:2px;cursor:pointer;font-family:inherit;margin-bottom:6px}
+#vc-mic.muted{background:rgba(180,60,60,0.12);border-color:rgba(180,60,60,0.3);color:#e87070}
+#vc-leave{width:100%;padding:7px;background:rgba(180,60,60,0.08);border:1px solid rgba(180,60,60,0.25);border-radius:6px;color:#e87070;font-size:9px;letter-spacing:2px;cursor:pointer;font-family:inherit}
+
+/* STATUS */
+#statusbar{display:flex;align-items:center;justify-content:space-between;padding:6px 14px;background:rgba(0,0,0,0.85);border-top:1px solid rgba(200,169,110,0.12);flex-shrink:0}
+#status-txt{font-size:9px;letter-spacing:2px;color:#5a4a2a}
+#status-vc{font-size:9px;letter-spacing:1px;color:#5a4a2a;transition:color .3s}
+#status-vc.active{color:#c8a96e}
+#online-count{font-size:9px;letter-spacing:1px;color:#5a4a2a}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- LOGIN -->
+<div id="screen-login">
+  <div class="jp-title">落忍の声</div>
+  <div class="jp-sub">FALLEN SHINOBI · VOICE</div>
+  <div class="jp-line"></div>
+  <div class="section-title">nom rp</div>
+  <input id="name-input" type="text" placeholder="Entre ton nom RP..." maxlength="20">
+  <div class="section-title">village de naissance</div>
+  <div class="villages-grid" style="grid-template-columns:repeat(2,1fr);max-width:260px">
+    <button class="village-btn" data-village="Konohagakure" data-x="0.12" data-y="0.82"><span class="vi">🌿</span>Konohagakure</button>
+    <button class="village-btn" data-village="Iwagakure" data-x="0.28" data-y="0.32"><span class="vi">⛰️</span>Iwagakure</button>
+  </div>
+  <div id="err"></div>
+  <button id="btn-enter">入る · ENTRER</button>
+</div>
+
+<!-- MAP -->
+<div id="screen-map">
+  <div id="topbar">
+    <div class="info">
+      <div class="pname" id="top-name">—</div>
+      <div class="pvillage" id="top-village">—</div>
+    </div>
+    <div id="toggle-wrap">
+      <span id="toggle-lbl">VOICE</span>
+      <div id="toggle"><div id="tdot"></div></div>
+    </div>
+  </div>
+  <div id="map-wrap">
+    <img id="map-img" src="map.png" alt="map">
+    <canvas id="map-canvas"></canvas>
+    <div id="joystick-wrap"><div id="joystick-base"></div><div id="joystick-knob"></div></div>
+    <div id="keys-hint">
+      <div class="kr"><div class="k">Z</div></div>
+      <div class="kr"><div class="k">Q</div><div class="k">S</div><div class="k">D</div></div>
+      <p>déplacer</p>
+    </div>
+    <div id="voice-panel">
+      <div id="vc-title"><span id="vc-pulse"></span>VOCAL ACTIF</div>
+      <div id="vc-names"></div>
+      <button id="vc-mic">🎤 MICRO ON</button>
+      <button id="vc-leave">QUITTER</button>
+    </div>
+  </div>
+  <div id="statusbar">
+    <div id="status-txt">CONNEXION...</div>
+    <div id="online-count">0 en ligne</div>
+    <div id="status-vc">VOICE OFF</div>
+  </div>
+</div>
+
+</div>
+<script>
+// ============================================================
+// CONFIG
+// ============================================================
+const SPEED = 0.00003;
+const PROXIMITY = 0.02;
+const MOVE_INTERVAL = 50; // ms entre chaque envoi de position
+
+// ============================================================
+// STATE
+// ============================================================
+let me = null;
+let players = {};
+let voiceEnabled = false;
+let voiceActive = false;
+let muted = false;
+let keys = {};
+let joyDx = 0, joyDy = 0, joyActive = false;
+let socket = null;
+let peerConnections = {}; // WebRTC peers
+let localStream = null;
+let lastMove = 0;
+
+// ============================================================
+// LOGIN
+// ============================================================
+document.querySelectorAll('.village-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.village-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    document.getElementById('err').textContent = '';
+  });
+});
+
+document.getElementById('btn-enter').addEventListener('click', () => {
+  const name = document.getElementById('name-input').value.trim();
+  const sel = document.querySelector('.village-btn.selected');
+  const err = document.getElementById('err');
+  if (!name) { err.textContent = '⚠ Entre ton nom RP'; return; }
+  if (!sel) { err.textContent = '⚠ Choisis un village'; return; }
+  me = {
+    name,
+    village: sel.dataset.village,
+    x: parseFloat(sel.dataset.x),
+    y: parseFloat(sel.dataset.y),
+  };
+  document.getElementById('top-name').textContent = name;
+  document.getElementById('top-village').textContent = sel.dataset.village;
+  document.getElementById('screen-login').style.display = 'none';
+  document.getElementById('screen-map').style.display = 'flex';
+  connectServer();
+  initInput();
+  requestAnimationFrame(loop);
+});
+
+// ============================================================
+// SOCKET.IO — Connexion serveur
+// ============================================================
+function connectServer() {
+  socket = io();
+
+  socket.on('connect', () => {
+    document.getElementById('status-txt').textContent = 'CONNECTÉ';
+    socket.emit('join', { name: me.name, village: me.village, x: me.x, y: me.y });
+  });
+
+  socket.on('disconnect', () => {
+    document.getElementById('status-txt').textContent = 'DÉCONNECTÉ...';
+  });
+
+  // Liste initiale des joueurs
+  socket.on('players', (data) => {
+    players = {};
+    Object.entries(data).forEach(([id, p]) => {
+      if (id !== socket.id) players[id] = p;
+    });
+    updateOnlineCount();
+  });
+
+  // Nouveau joueur
+  socket.on('player_joined', (p) => {
+    if (p.id !== socket.id) {
+      players[p.id] = p;
+      updateOnlineCount();
+    }
+  });
+
+  // Mouvement d'un joueur
+  socket.on('player_moved', (data) => {
+    if (players[data.id]) {
+      players[data.id].x = data.x;
+      players[data.id].y = data.y;
+    }
+  });
+
+  // Joueur parti
+  socket.on('player_left', (id) => {
+    delete players[id];
+    closePeer(id);
+    updateOnlineCount();
+  });
+
+  // WebRTC signaling
+  socket.on('voice_offer', async (data) => {
+    const pc = createPeer(data.from);
+    await pc.setRemoteDescription(data.offer);
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    socket.emit('voice_answer', { to: data.from, answer });
+  });
+
+  socket.on('voice_answer', async (data) => {
+    if (peerConnections[data.from]) {
+      await peerConnections[data.from].setRemoteDescription(data.answer);
+    }
+  });
+
+  socket.on('ice_candidate', async (data) => {
+    if (peerConnections[data.from]) {
+      await peerConnections[data.from].addIceCandidate(data.candidate);
+    }
+  });
+}
+
+function updateOnlineCount() {
+  const n = Object.keys(players).length;
+  document.getElementById('online-count').textContent = (n+1) + ' en ligne';
+}
+
+// ============================================================
+// WebRTC
+// ============================================================
+function createPeer(targetId) {
+  const pc = new RTCPeerConnection({
+    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+  });
+  peerConnections[targetId] = pc;
+
+  if (localStream) {
+    localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+  }
+
+  pc.onicecandidate = (e) => {
+    if (e.candidate) socket.emit('ice_candidate', { to: targetId, candidate: e.candidate });
+  };
+
+  pc.ontrack = (e) => {
+    const audio = document.createElement('audio');
+    audio.srcObject = e.streams[0];
+    audio.autoplay = true;
+    audio.id = 'audio_' + targetId;
+    document.body.appendChild(audio);
+  };
+
+  return pc;
+}
+
+async function callPeer(targetId) {
+  const pc = createPeer(targetId);
+  if (localStream) {
+    localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+  }
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  socket.emit('voice_offer', { to: targetId, offer });
+}
+
+function closePeer(id) {
+  if (peerConnections[id]) {
+    peerConnections[id].close();
+    delete peerConnections[id];
+  }
+  const audio = document.getElementById('audio_' + id);
+  if (audio) audio.remove();
+}
+
+// ============================================================
+// VOICE TOGGLE
+// ============================================================
+document.getElementById('toggle').addEventListener('click', async () => {
+  voiceEnabled = !voiceEnabled;
+  const t = document.getElementById('toggle');
+  const sv = document.getElementById('status-vc');
+  if (voiceEnabled) {
+    // Demander accès micro
+    try {
+      localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    } catch(e) {
+      alert('Micro non disponible !');
+      voiceEnabled = false;
+      return;
+    }
+    t.classList.add('on');
+    sv.textContent = 'VOICE ON';
+    sv.classList.add('active');
+    document.getElementById('status-txt').textContent = 'RECHERCHE...';
+  } else {
+    t.classList.remove('on');
+    sv.textContent = 'VOICE OFF';
+    sv.classList.remove('active');
+    leaveVoice();
+    if (localStream) { localStream.getTracks().forEach(t=>t.stop()); localStream = null; }
+    Object.keys(peerConnections).forEach(closePeer);
+  }
+});
+
+document.getElementById('vc-mic').addEventListener('click', () => {
+  muted = !muted;
+  if (localStream) localStream.getAudioTracks().forEach(t => t.enabled = !muted);
+  const btn = document.getElementById('vc-mic');
+  btn.textContent = muted ? '🔇 MICRO OFF' : '🎤 MICRO ON';
+  btn.classList.toggle('muted', muted);
+});
+
+document.getElementById('vc-leave').addEventListener('click', leaveVoice);
+
+function leaveVoice() {
+  voiceActive = false;
+  document.getElementById('voice-panel').classList.remove('show');
+  if (voiceEnabled) document.getElementById('status-txt').textContent = 'RECHERCHE...';
+}
+
+// ============================================================
+// INPUT
+// ============================================================
+function initInput() {
+  const mobile = 'ontouchstart' in window;
+  if (mobile) {
+    document.getElementById('joystick-wrap').style.display = 'block';
+    initJoystick();
+  } else {
+    document.getElementById('keys-hint').style.display = 'flex';
+    window.addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; });
+    window.addEventListener('keyup',   e => { keys[e.key.toLowerCase()] = false; });
+  }
+}
+
+function initJoystick() {
+  const wrap = document.getElementById('joystick-wrap');
+  const knob = document.getElementById('joystick-knob');
+  const R = 29;
+  function move(cx, cy) {
+    const r = wrap.getBoundingClientRect();
+    const ox = cx-r.left-48, oy = cy-r.top-48;
+    const d = Math.sqrt(ox*ox+oy*oy), c = Math.min(d,R), a = Math.atan2(oy,ox);
+    joyDx = Math.cos(a)*c/R; joyDy = Math.sin(a)*c/R;
+    knob.style.left=(29+Math.cos(a)*c)+'px'; knob.style.top=(29+Math.sin(a)*c)+'px';
+  }
+  wrap.addEventListener('touchstart', e=>{joyActive=true;move(e.touches[0].clientX,e.touches[0].clientY);e.preventDefault();},{passive:false});
+  wrap.addEventListener('touchmove',  e=>{move(e.touches[0].clientX,e.touches[0].clientY);e.preventDefault();},{passive:false});
+  wrap.addEventListener('touchend',   ()=>{joyActive=false;joyDx=0;joyDy=0;knob.style.left='29px';knob.style.top='29px';});
+}
+
+// ============================================================
+// MAIN LOOP
+// ============================================================
+function loop() {
+  if (!me) { requestAnimationFrame(loop); return; }
+
+  // Déplacement
+  let dx=0,dy=0;
+  if(keys['z']||keys['arrowup'])    dy-=SPEED;
+  if(keys['s']||keys['arrowdown'])  dy+=SPEED;
+  if(keys['q']||keys['arrowleft'])  dx-=SPEED;
+  if(keys['d']||keys['arrowright']) dx+=SPEED;
+  if(joyActive){dx+=joyDx*SPEED;dy+=joyDy*SPEED;}
+
+  me.x = Math.max(0.01,Math.min(0.99, me.x+dx));
+  me.y = Math.max(0.01,Math.min(0.99, me.y+dy));
+
+  // Envoyer position au serveur (pas trop souvent)
+  const now = Date.now();
+  if(socket && (dx!==0||dy!==0) && now-lastMove > MOVE_INTERVAL) {
+    socket.emit('move', {x:me.x, y:me.y});
+    lastMove = now;
+  }
+
+  // Vérification proximité + WebRTC
+  if(voiceEnabled) {
+    const near = Object.values(players).filter(p =>
+      Math.sqrt((p.x-me.x)**2+(p.y-me.y)**2) < PROXIMITY
+    );
+    if(near.length>0 && !voiceActive) {
+      voiceActive = true;
+      document.getElementById('voice-panel').classList.add('show');
+      document.getElementById('vc-names').textContent = near.map(p=>p.name).join('\n');
+      document.getElementById('status-txt').textContent = '● EN COMMUNICATION';
+      // Appel WebRTC vers chaque joueur proche
+      near.forEach(p => { if(!peerConnections[p.id]) callPeer(p.id); });
+    } else if(near.length===0 && voiceActive) {
+      leaveVoice();
+      // Fermer les connexions vocales
+      Object.keys(peerConnections).forEach(closePeer);
+    }
+  }
+
+  draw();
+  requestAnimationFrame(loop);
+}
+
+// ============================================================
+// DRAW
+// ============================================================
+function draw() {
+  const canvas = document.getElementById('map-canvas');
+  const wrap = document.getElementById('map-wrap');
+  canvas.width = wrap.clientWidth;
+  canvas.height = wrap.clientHeight;
+  const ctx = canvas.getContext('2d');
+  const W=canvas.width, H=canvas.height;
+  ctx.clearRect(0,0,W,H);
+
+  // Autres joueurs (visibles seulement si proches)
+  Object.values(players).forEach(p => {
+    const dist = Math.sqrt((p.x-me.x)**2+(p.y-me.y)**2);
+    if(dist > PROXIMITY*2.5) return;
+    const alpha = Math.max(0.1, 1-(dist-PROXIMITY*0.5)/(PROXIMITY*2));
+    const px=p.x*W, py=p.y*H;
+    ctx.globalAlpha = alpha;
+    ctx.beginPath(); ctx.arc(px,py,5,0,Math.PI*2);
+    ctx.fillStyle = '#e87070'; ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,0.8)'; ctx.lineWidth=1.5; ctx.stroke();
+    ctx.fillStyle='rgba(255,255,255,0.85)'; ctx.font='9px serif'; ctx.textAlign='center';
+    ctx.fillText(p.name,px,py-10);
+    ctx.globalAlpha=1;
+  });
+
+  // Cercle de proximité
+  if(voiceEnabled) {
+    ctx.beginPath(); ctx.arc(me.x*W,me.y*H,PROXIMITY*W,0,Math.PI*2);
+    ctx.strokeStyle=voiceActive?'rgba(200,169,110,0.55)':'rgba(200,169,110,0.18)';
+    ctx.lineWidth=1.2; ctx.setLineDash([5,5]); ctx.stroke(); ctx.setLineDash([]);
+  }
+
+  // MOI
+  const mx=me.x*W, my=me.y*H;
+  ctx.fillStyle='rgba(8,8,12,0.88)';
+  ctx.beginPath(); ctx.roundRect(mx-32,my-34,64,18,4); ctx.fill();
+  ctx.strokeStyle='rgba(200,169,110,0.55)'; ctx.lineWidth=1; ctx.stroke();
+  ctx.fillStyle='rgba(200,169,110,0.55)';
+  ctx.beginPath(); ctx.moveTo(mx-5,my-16); ctx.lineTo(mx+5,my-16); ctx.lineTo(mx,my-10); ctx.fill();
+  ctx.fillStyle='#c8a96e'; ctx.font='bold 9px serif'; ctx.textAlign='center';
+  ctx.fillText('▼ '+me.name.substring(0,8),mx,my-21);
+  ctx.beginPath(); ctx.arc(mx,my,7,0,Math.PI*2);
+  ctx.fillStyle='#c8a96e'; ctx.fill();
+  ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke();
+}
+</script>
+</body>
+</html>
